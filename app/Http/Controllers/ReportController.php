@@ -263,14 +263,15 @@ class ReportController extends Controller
             //get sub type for total sales
             $sales_by_subtype = Transaction::where('business_id', $business_id)
                 ->where('type', 'sell')
-                ->where('status', 'final');
-            if (!empty($start_date) && !empty($end_date)) {
-                if ($start_date == $end_date) {
-                    $sales_by_subtype->whereDate('transaction_date', $end_date);
-                } else {
-                    $sales_by_subtype->whereBetween(DB::raw('transaction_date'), [$start_date, $end_date]);
+                ->where('status', 'final')
+                ->when((!empty($start_date) && !empty($end_date)) , function ($query) use($start_date,$end_date) {
+                    return $query->when(($start_date == $end_date) , function ($query) use($end_date) {
+                        return $query->whereDate('transaction_date', $end_date);
+                    },function ($query) use($start_date,$end_date)  {
+                        return $query->whereBetween('transaction_date', [$start_date, $end_date]);
+                    });
                 }
-            }
+                 );
             $sales_by_subtype = $sales_by_subtype->select(DB::raw('SUM(total_before_tax) as total_before_tax'), 'sub_type')
                 ->groupBy('transactions.sub_type')
                 ->get();
